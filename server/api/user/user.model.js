@@ -4,8 +4,13 @@ import crypto from 'crypto';
 mongoose.Promise = require('bluebird');
 import mongoose, {Schema} from 'mongoose';
 
+var discOptions = {discriminatorKey: 'user_type'};
 var UserSchema = new Schema({
-  name: String,
+  full_name         : String,
+  user_id           : String,     // User System id
+  user_type         : { type: String, enum: ['User', 'Customer'], default: 'User'},
+  created_datetime  : { type: Date,   default: Date.now },
+  updated_datetime  : { type: Date,   default: Date.now },
   email: {
     type: String,
     lowercase: true,
@@ -21,7 +26,7 @@ var UserSchema = new Schema({
   },
   provider: String,
   salt: String
-});
+}, discOptions);
 
 /**
  * Virtuals
@@ -32,7 +37,7 @@ UserSchema
   .virtual('profile')
   .get(function() {
     return {
-      name: this.name,
+      full_name: this.full_name,
       role: this.role
     };
   });
@@ -93,6 +98,9 @@ var validatePresenceOf = function(value) {
  */
 UserSchema
   .pre('save', function(next) {
+    this.updated_datetime = new Date();
+    this.user_id || (this.user_id = this._id.toString());     // if user_id is not supplied, set _id as user_id
+
     // Handle new/update passwords
     if(!this.isModified('password')) {
       return next();
